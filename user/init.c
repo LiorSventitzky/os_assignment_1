@@ -43,7 +43,7 @@ int main(void)
     {
       // this call to wait() returns if the shell exits,
       // or if a parentless process exits.
-      wpid = wait((int *)0);
+      wpid = wait((int *)0, 0);
       if (wpid == pid)
       {
         // the shell exited; restart it.

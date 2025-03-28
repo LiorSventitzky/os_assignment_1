@@ -69,8 +69,6 @@ void runcmd(struct cmd *cmd)
   struct listcmd *lcmd;
   struct pipecmd *pcmd;
   struct redircmd *rcmd;
-  int status;
-  char exit_msg[32]; // Buffer to store exit message
 
   if (cmd == 0)
     exit(1, "");
@@ -103,7 +101,7 @@ void runcmd(struct cmd *cmd)
     lcmd = (struct listcmd *)cmd;
     if (fork1() == 0)
       runcmd(lcmd->left);
-    wait(0, exit_msg);
+    wait(0, 0);
     runcmd(lcmd->right);
     break;
 
@@ -129,8 +127,8 @@ void runcmd(struct cmd *cmd)
     }
     close(p[0]);
     close(p[1]);
-    wait(0, exit_msg);
-    wait(0, exit_msg);
+    wait(0, 0);
+    wait(0, 0);
     break;
 
   case BACK:
@@ -139,8 +137,6 @@ void runcmd(struct cmd *cmd)
       runcmd(bcmd->cmd);
     break;
   }
-
-  fprintf(2, "Exit message: %s\n", exit_msg);
 
   exit(0, "");
 }
@@ -159,6 +155,7 @@ int main(void)
 {
   static char buf[100];
   int fd;
+  char exit_msg[32]; // Buffer to store exit message
 
   // Ensure that three file descriptors are open.
   while ((fd = open("console", O_RDWR)) >= 0)
@@ -183,7 +180,9 @@ int main(void)
     }
     if (fork1() == 0)
       runcmd(parsecmd(buf));
-    wait(0);
+    wait(0, exit_msg);
+    fprintf(2, exit_msg);
+    fprintf(2, "\n");
   }
   exit(0, "");
 }

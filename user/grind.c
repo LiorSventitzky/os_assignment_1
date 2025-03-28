@@ -140,7 +140,7 @@ void go(int which_child)
         printf("grind: fork failed\n");
         exit(1, "");
       }
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 14)
     {
@@ -156,7 +156,7 @@ void go(int which_child)
         printf("grind: fork failed\n");
         exit(1, "");
       }
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 15)
     {
@@ -186,7 +186,7 @@ void go(int which_child)
         exit(1, "");
       }
       kill(pid);
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 18)
     {
@@ -201,7 +201,7 @@ void go(int which_child)
         printf("grind: fork failed\n");
         exit(1, "");
       }
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 19)
     {
@@ -230,7 +230,7 @@ void go(int which_child)
       }
       close(fds[0]);
       close(fds[1]);
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 20)
     {
@@ -250,7 +250,7 @@ void go(int which_child)
         printf("grind: fork failed\n");
         exit(1, "");
       }
-      wait(0);
+      wait(0, 0);
     }
     else if (what == 21)
     {
@@ -362,8 +362,8 @@ void go(int which_child)
       read(bb[0], buf + 2, 1);
       close(bb[0]);
       int st1, st2;
-      wait(&st1);
-      wait(&st2);
+      wait(&st1, 0);
+      wait(&st2, 0);
       if (st1 != 0 || st2 != 0 || strcmp(buf, "hi\n") != 0)
       {
         printf("grind: exec pipeline failed %d %d \"%s\"\n", st1, st2, buf);
@@ -405,14 +405,14 @@ void iter()
   }
 
   int st1 = -1;
-  wait(&st1);
+  wait(&st1, 0);
   if (st1 != 0)
   {
     kill(pid1);
     kill(pid2);
   }
   int st2 = -1;
-  wait(&st2);
+  wait(&st2, 0);
 
   exit(0, "");
 }
@@ -429,7 +429,7 @@ int main()
     }
     if (pid > 0)
     {
-      wait(0);
+      wait(0, 0);
     }
     sleep(20);
     rand_next += 1;

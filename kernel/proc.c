@@ -358,24 +358,8 @@ void exit(int status, char *msg)
   if (p == initproc)
     panic("init exiting");
 
-  // Copy the exit message from user-space to kernel-space
-  argstr(1, p->exit_msg, sizeof(p->exit_msg));
-
-  // Close all open files.
-  for (int fd = 0; fd < NOFILE; fd++)
-  {
-    if (p->ofile[fd])
-    {
-      struct file *f = p->ofile[fd];
-      fileclose(f);
-      p->ofile[fd] = 0;
-    }
-  }
-
-  begin_op();
-  iput(p->cwd);
-  end_op();
-  p->cwd = 0;
+  if (msg)
+    strncpy(p->exit_msg, msg, sizeof(p->exit_msg));
 
   acquire(&wait_lock);
 
