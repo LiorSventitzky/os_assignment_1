@@ -695,3 +695,173 @@ void procdump(void)
     printf("\n");
   }
 }
+
+int forkn(int n, int *pids)
+{
+  if (n < 1 || n > 16)
+  {
+    return -1; // Fail if n is less than 1 or greater than 16.
+  }
+
+  struct proc *p = myproc();
+  int i;
+  int pid;
+  int children_created = 0;
+  struct proc *np;
+  int temp_pids[16]; // Temporary array to store PIDs of created child processes.
+
+  // Try creating n child processes.
+  for (i = 0; i < n; i++)
+  {
+    np = allocproc();
+    if (np == 0)
+    {
+      // Failed to allocate a process. Clean up previously created processes.
+      for (int j = 0; j < children_created; j++)
+      {
+        // Free the resources for the already created children.
+        struct proc *child = &proc[temp_pids[j]];
+        freeproc(child);
+      }
+      return -1;
+    }
+
+    // Copy user memory from parent to child
+    if (uvmcopy(p->pagetable, np->pagetable, p->sz) < 0)
+    {
+      freeproc(np);
+      return -1;
+    }
+    np->sz = p->sz;
+
+    // Copy saved user registers
+    *(np->trapframe) = *(p->trapframe);
+
+    // Set return value for fork() in child (0 for child, pid for parent)
+    np->trapframe->a0 = 0;
+
+    // Duplicate file descriptors
+    for (int j = 0; j < NOFILE; j++)
+    {
+      if (p->ofile[j])
+      {
+        np->ofile[j] = filedup(p->ofile[j]);
+      }
+    }
+    np->cwd = idup(p->cwd);
+
+    safestrcpy(np->name, p->name, sizeof(p->name));
+
+    // Store the pid in the temporary array.
+    temp_pids[children_created] = np->pid;
+
+    // Update child state and parent info
+    acquire(&wait_lock);
+    np->parent = p;
+    release(&wait_lock);
+
+    // Increment the count of successfully created children
+    children_created++;
+
+    // Do not set the process as runnable yet.
+    release(&np->lock);
+  }
+
+  // All children were created successfully, now release them to the runnable state.
+  for (i = 0; i < children_created; i++)
+  {
+    pid = temp_pids[i];
+    struct proc *child = &proc[pid];
+
+    acquire(&child->lock);
+    child->state = RUNNABLE;
+    release(&child->lock);
+  }
+
+  // Copy PIDs to user-space array.
+  if (copyout(p->pagetable, (uint64)pids, (char *)temp_pids, children_created * sizeof(int)) < 0)
+  {
+    return -1;
+  }
+
+  return 0; // Success
+}
+
+int waitall(int *n, int *statuses)
+{
+  struct proc *pp;
+  struct proc *p = myproc();
+  int numkids = 0;
+  int finished_count = 0;
+  int statuses_array[NPROC]; // Array to store exit statuses of child processes
+
+  acquire(&wait_lock);
+
+  // First, check if the process has any children
+  for (pp = proc; pp < &proc[NPROC]; pp++)
+  {
+    if (pp->parent == p)
+    {
+      numkids++;
+    }
+  }
+
+  // If no children, return 0 and don't modify statuses or n
+  if (numkids == 0)
+  {
+    *n = 0; // Set the number of finished children to 0
+    release(&wait_lock);
+    return 0;
+  }
+
+  // Now wait for all children to enter ZOMBIE state
+  while (1)
+  {
+    finished_count = 0;
+    for (pp = proc; pp < &proc[NPROC]; pp++)
+    {
+      if (pp->parent == p)
+      {
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&pp->lock);
+        if (pp->state == ZOMBIE)
+        {
+          // Found a finished child, store its exit status
+          statuses_array[finished_count] = pp->xstate;
+          finished_count++;
+
+          // Free the child process and remove it from the process table
+          freeproc(pp);
+        }
+        release(&pp->lock);
+      }
+    }
+
+    // If not all children are finished, continue waiting
+    if (finished_count < numkids)
+    {
+      sleep(p, &wait_lock);
+      continue;
+    }
+
+    // All children are finished, break out of the loop
+    break;
+  }
+
+  // Copy the number of finished children (finished_count) to user space
+  if (copyout(p->pagetable, (uint64)n, &finished_count, sizeof(finished_count)) < 0)
+  {
+    release(&wait_lock);
+    return -1;
+  }
+
+  // Copy the statuses array to user space
+  if (copyout(p->pagetable, (uint64)statuses, (char *)statuses_array, sizeof(statuses_array)) < 0)
+  {
+    release(&wait_lock);
+    return -1;
+  }
+
+  release(&wait_lock);
+  return 0;
+}

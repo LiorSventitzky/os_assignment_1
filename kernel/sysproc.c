@@ -108,3 +108,27 @@ sys_memsize(void)
   size = myproc()->sz;
   return size;
 }
+
+uint64
+sys_forkn(void)
+{
+  int n;
+  int *pids;
+
+  argint(0, &n);
+  argaddr(1, (uint64 *)&pids);
+
+  return forkn(n, pids);
+}
+
+uint64
+sys_waitall(void)
+{
+  int *n;
+  int *statuses;
+
+  argaddr(0, (uint64 *)&n);
+  argaddr(1, (uint64 *)&statuses);
+
+  return waitall(n, statuses);
+}
