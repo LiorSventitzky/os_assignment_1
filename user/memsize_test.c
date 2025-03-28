@@ -13,5 +13,5 @@ int main(int argc, char *argv[])
     free(ptr);
     int sizeF = memsize();
     printf("Memory after free allocation: %d bytes\n", sizeF);
-    exit(0);
+    exit(0, "");
 }
