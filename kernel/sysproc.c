@@ -113,22 +113,22 @@ uint64
 sys_forkn(void)
 {
   int n;
-  int *pids;
+  uint64 pids;
 
   argint(0, &n);
-  argaddr(1, (uint64 *)&pids);
+  argaddr(1, &pids);
 
-  return forkn(n, pids);
+  return forkn(n, (int *)pids);
 }
 
 uint64
 sys_waitall(void)
 {
-  int *n;
-  int *statuses;
+  uint64 n;
+  uint64 statuses;
 
-  argaddr(0, (uint64 *)&n);
-  argaddr(1, (uint64 *)&statuses);
+  argaddr(0, &n);
+  argaddr(1, &statuses);
 
-  return waitall(n, statuses);
+  return waitall((int *)n, (int *)statuses);
 }
